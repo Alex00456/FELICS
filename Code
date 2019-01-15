@@ -1,0 +1,598 @@
+#include <stdio.h>
+#include <vector>
+ 
+struct nextaft
+{
+    int pos;
+    int length;
+};
+ 
+namespace PixelCP{
+ 
+class channel
+{
+    public:
+    int width;
+    int height;
+    int csz;
+    int cpcsz;
+    int pos;
+    unsigned char* bytes;
+    std::vector<nextaft> nextissame;
+    //Bitarray nextissame;
+    bool iscompressed;
+ 
+    channel()
+    {
+        width=0;
+        height=0;
+        pos=0;
+    }
+    channel(int _width, int _height)
+    {
+        this->SetUp(_width,_height);
+    }
+ 
+    channel()
+    {
+        this->clear();
+    }
+ 
+    void SetUp(int width_, int height_)
+    {
+        width = width_;
+        height = height_;
+        csz = width_*height_;
+        bytes = (unsigned char*)malloc(csz);
+        pos = 0;
+        iscompressed=0;
+    }
+ 
+    void addPixelcomponent(unsigned char pixc)
+    {
+                if(pos<csz)
+        {
+            bytes[pos] = pixc;
+            /*if(pos>0)
+            {
+                if(bytes[pos-1]==pixc)
+                {
+                    //nextissame[pos] = 1;
+                    //nextissame.setat(pos,1);
+ 
+                    if(nextissame.size()>0)
+                    {
+                        if(nextissame.back().pos+nextissame.back().length==pos)
+                        {
+                            nextissame.back().length++;
+                        }
+                        else
+                        {
+ 
+                        }
+ 
+                    }
+                    else
+                    {
+                            nextissame.push_back({0});
+                            nextissame.back().pos=pos;
+                            nextissame.back().length=1;
+                    }
+ 
+ 
+ 
+ 
+                        //n++;
+ 
+                }
+            }*/
+ 
+ 
+            pos++;
+        }
+ 
+    }
+ 
+    void compress()
+    {
+        unsigned char* compbytes;
+        compbytes = (unsigned char*)malloc(csz*sizeof(unsigned char));
+        int x = 0;
+        int n = 0;
+ 
+        for(int i = 1; i < csz; i++)
+        {
+                if(bytes[i-1]==bytes[i])
+                {
+                    if(nextissame.size()>0)
+                    {
+                        if(nextissame.back().pos+nextissame.back().length==i)
+                        {
+                            nextissame.back().length++;
+                        }
+                        else
+                        {
+                            nextissame.push_back({0});
+                            nextissame.back().pos=i;
+                            nextissame.back().length=1;
+                        }
+ 
+                    }
+                    else
+                    {
+                            nextissame.push_back({0});
+                            nextissame.back().pos=i;
+                            nextissame.back().length=1;
+                    }
+                        //n++;
+                }
+        }
+ 
+        bool szcer = 1;
+ 
+        printf("samevec:%d\n",nextissame.size());
+ 
+        if(nextissame.size()==0)
+        {
+            nextissame.push_back({0});
+            nextissame.at(0).pos = -1;
+            nextissame.at(0).length = 0;
+            nextissame.push_back({0});
+            nextissame.at(0).pos = -1;
+            nextissame.at(0).length = 0;
+            szcer = 0;
+        }
+ 
+        for(int i = 0; i < csz; i++)
+        {
+            //printf("\ri:%d ",i);
+            if(/*nextissame[i] nextissame.getat(i)*/i<nextissame.at(n).pos||i>nextissame.at(n).pos+nextissame.at(n).length-1)
+            {
+                compbytes[x] = bytes[i];
+                x++;
+            }
+            if(i>nextissame.at(n).pos+nextissame.at(n).length&&n<nextissame.size()-1&&szcer==1)
+            {
+                n++;
+            }
+        }
+        printf("##############################");
+        n = 0;
+        printf("COMP_X:%d\n",x);
+        compbytes = (unsigned char*)realloc(compbytes,(x+1)*sizeof(unsigned int));
+        memset(bytes,0,csz);
+        free(bytes);
+        bytes = compbytes;
+        cpcsz = x;
+ 
+        x=0;
+        for(int i = 0; i < csz; i++)
+        {
+            if(/*nextissame[i] nextissame.getat(i)==1*/i<nextissame.at(n).pos||i>nextissame.at(n).pos+nextissame.at(n).length-1)
+            {
+                x++;
+            }
+            if(i>nextissame.at(n).pos+nextissame.at(n).length&&n<nextissame.size()-1&&szcer==1)
+            {
+                n++;
+            }
+        }
+        printf("sames:%d\n",x);
+        iscompressed=1;
+ 
+    }
+    void decompress()
+    {
+ 
+        if(iscompressed)
+        {
+            unsigned char* decompbytes;
+            decompbytes = (unsigned char*)malloc(cpcsz*sizeof(unsigned char));
+            for(int i = 0; i < cpcsz; i++)
+            {
+                decompbytes[i]=bytes[i];
+            }
+            bytes = (unsigned char*)realloc(bytes,csz*sizeof(unsigned char));
+ 
+            bool szcer = 1;
+            if(nextissame.size()==0)
+            {
+                nextissame.push_back({0});
+                nextissame.at(0).pos = -1;
+                nextissame.at(0).length = 0;
+                nextissame.push_back({0});
+                nextissame.at(0).pos = -1;
+                nextissame.at(0).length = 0;
+                szcer = 0;
+            }
+ 
+            int x = 0;
+            int n = 0;
+            for(int i = 0; i < csz; i++)
+            {
+                if(/*nextissame[i] nextissame.getat(i)*/i<nextissame.at(n).pos||i>nextissame.at(n).pos+nextissame.at(n).length-1)
+                {
+                    bytes[i] = decompbytes[x];
+                    x++;
+                    //compbytes = (unsigned char*)realloc(compbytes,(x+1)*sizeof(unsigned int));
+                }
+                else
+                {
+                    bytes[i] = bytes[i-1];
+                }
+ 
+                if(i>nextissame.at(n).pos+nextissame.at(n).length&&n<nextissame.size()-1&&szcer==1)
+                {
+                    n++;
+                }
+            }
+            free(decompbytes);
+            iscompressed=0;
+        }
+    }
+ 
+    unsigned int size()
+    {
+        unsigned int i;
+        if(nextissame.size()>0)
+        {
+            i = cpcsz+nextissame.size()*sizeof(nextissame.at(0));
+        }
+        else
+        {
+            i = cpcsz;
+        }
+ 
+ 
+        return i;
+    }
+ 
+    void clear()
+    {
+        //nextissame.~Bitarray();
+        if(nextissame.size()>0)
+        {
+        nextissame.clear();
+        //nextissame.~vector();
+        //printf("Freed Channel vector!\n");
+        }
+ 
+        //free(nextissame);
+        if(width>0&&height>0)
+        {
+            free(bytes);
+            //printf("Freed bytes!\n");
+        }
+        width=0;
+        height=0;
+        pos=0;
+    }
+ 
+ 
+};
+ 
+ 
+ 
+class CompressedImage
+{
+    unsigned char * pixeldata;
+    int width;
+    int height;
+    int channels;
+    int CI_size;
+    int CI_size_compressed;
+    channel R;
+    channel G;
+    channel B;
+    bool iscompressed;
+ 
+    public:
+ 
+    CompressedImage(unsigned char* pixels,int p_width,int p_height,int p_channels)
+    {
+        createCImg(pixels,p_width,p_height,p_channels);
+    }
+ 
+    CompressedImage()
+    {
+        iscompressed=0;
+        CI_size_compressed=0;
+        pixeldata = 0;
+        width = 0;
+        height = 0;
+        channels = 0;
+        CI_size = 0;
+    }
+ 
+    ~CompressedImage()
+    {
+        clearIMG();
+    }
+ 
+    void setup()
+    {
+        iscompressed=0;
+        CI_size_compressed=0;
+        pixeldata = 0;
+        width = 0;
+        height = 0;
+        channels = 0;
+        CI_size = 0;
+    }
+ 
+    void compress()
+    {
+        R.compress();
+        G.compress();
+        B.compress();
+        CI_size_compressed = R.size()+G.size()+B.size();
+        //printf("RGBS:%d,%d,%d\n",R.cpcsz,G.cpcsz,B.cpcsz);
+        iscompressed=1;
+    }
+ 
+    void decompress()
+    {
+        if(iscompressed)
+        {
+            R.decompress();
+            G.decompress();
+            B.decompress();
+            CI_size_compressed=-1;
+            iscompressed=0;
+        }
+ 
+    }
+ 
+    void createCImg(unsigned char* pixels,int p_width,int p_height,int p_channels)
+    {
+        iscompressed=0;
+        CI_size_compressed=0;
+        pixeldata = pixels;
+        width = p_width;
+        height = p_height;
+        channels = p_channels;
+        CI_size = p_width*p_height*p_channels;
+        this->SetUp();
+    }
+ 
+    void SetUp()
+    {
+        iscompressed=0;
+        R.SetUp(width,height);
+        G.SetUp(width,height);
+        B.SetUp(width,height);
+ 
+        unsigned char swi = 0;
+        int sz = width*height*channels;
+ 
+        for(int i = 0; i < sz; i++)
+        {
+ 
+            if(swi>2)
+            {
+                swi=0;
+            }
+            if(swi==0)
+            {
+                R.addPixelcomponent(pixeldata[i]);
+            }
+            if(swi==1)
+            {
+                G.addPixelcomponent(pixeldata[i]);
+            }
+            if(swi==2)
+            {
+                B.addPixelcomponent(pixeldata[i]);
+            }
+            swi++;
+ 
+ 
+        }
+        printf("swi:%d\n",swi);
+ 
+    }
+ 
+    int size()
+    {
+        if(iscompressed)
+        {
+            return CI_size_compressed;
+        }
+        else
+        {
+            return CI_size;
+        }
+ 
+    }
+ 
+    void clearIMG()
+    {
+        R.~channel();
+        G.~channel();
+        B.~channel();
+        printf("Freed Channels RBG!\n");
+        //free(pixeldata);
+        //printf("Freed Input data!\n");
+        width=0;
+        height=0;
+        channels=0;
+        CI_size_compressed=0;
+    }
+ 
+    void loadFromFile(std::string path, int * width_, int * height_, int * channels_)
+    {
+        FILE * file;
+        file = fopen( path.c_str(), "rb" );
+ 
+        fread(&width, sizeof(int), 1, file);
+        fread(&height, sizeof(int), 1, file);
+        fread(&channels, sizeof(int), 1, file);
+ 
+        *width_ = width;
+        *height_ = height;
+        *channels_ = 3;
+ 
+        this->channels = 3;
+ 
+        this->CI_size=width*height*channels;
+ 
+        fread(&R.cpcsz, sizeof(int), 1, file);
+        this->R.bytes = (unsigned char*)malloc(R.cpcsz*sizeof(unsigned char));
+        fread(R.bytes, sizeof(unsigned char), R.cpcsz, file);
+        fread(&G.cpcsz, sizeof(int), 1, file);
+        this->G.bytes = (unsigned char*)malloc(G.cpcsz*sizeof(unsigned char));
+        fread(G.bytes, sizeof(unsigned char), G.cpcsz, file);
+        fread(&B.cpcsz, sizeof(int), 1, file);
+        this->B.bytes = (unsigned char*)malloc(B.cpcsz*sizeof(unsigned char));
+        fread(B.bytes, sizeof(unsigned char), B.cpcsz, file);
+ 
+        this->R.csz = width*height;
+        this->G.csz = width*height;
+        this->B.csz = width*height;
+ 
+        this->R.iscompressed = 1;
+        this->G.iscompressed = 1;
+        this->B.iscompressed = 1;
+ 
+        this->R.pos = 0;
+        this->G.pos = 0;
+        this->B.pos = 0;
+ 
+ 
+ 
+        int i;
+        int tmp;
+ 
+        int ps;
+        int le;
+ 
+        fread(&tmp, sizeof(int), 1, file);
+        this->R.nextissame.clear();
+        for(i = 0; i < tmp; i++)
+        {
+            fread(&ps, sizeof(int), 1, file);
+            fread(&le, sizeof(int), 1, file);
+            this->R.nextissame.push_back({0});
+            this->R.nextissame.back().pos=ps;
+            this->R.nextissame.back().length=le;
+        }
+ 
+        fread(&tmp, sizeof(int), 1, file);
+        this->G.nextissame.clear();
+        for(i = 0; i < tmp; i++)
+        {
+            fread(&ps, sizeof(int), 1, file);
+            fread(&le, sizeof(int), 1, file);
+            this->G.nextissame.push_back({0});
+            this->G.nextissame.back().pos=ps;
+            this->G.nextissame.back().length=le;
+        }
+ 
+        fread(&tmp, sizeof(int), 1, file);
+        this->B.nextissame.clear();
+        for(i = 0; i < tmp; i++)
+        {
+            fread(&ps, sizeof(int), 1, file);
+            fread(&le, sizeof(int), 1, file);
+            this->B.nextissame.push_back({0});
+            this->B.nextissame.back().pos=ps;
+            this->B.nextissame.back().length=le;
+        }
+ 
+        this->iscompressed=1;
+        this->CI_size_compressed = this->R.size()+this->G.size()+this->B.size();
+ 
+    }
+ 
+    void saveToFile(std::string path)/** path.cif **/
+    {
+        FILE * file;
+        file = fopen( path.c_str(), "wb" );
+ 
+ 
+        fwrite(&width, sizeof(int), 1, file);
+        fwrite(&height, sizeof(int), 1, file);
+        fwrite(&channels, sizeof(int), 1, file);
+ 
+        fwrite(&R.cpcsz, sizeof(int), 1, file);
+        fwrite(R.bytes, sizeof(unsigned char), R.cpcsz, file);
+        fwrite(&G.cpcsz, sizeof(int), 1, file);
+        fwrite(G.bytes, sizeof(unsigned char), G.cpcsz, file);
+        fwrite(&B.cpcsz, sizeof(int), 1, file);
+        fwrite(B.bytes, sizeof(unsigned char), B.cpcsz, file);
+        int i;
+        int tmp;
+        tmp = R.nextissame.size();
+        fwrite(&tmp, sizeof(int), 1, file);
+        for(i = 0; i < tmp; i++)
+        {
+            fwrite(&R.nextissame.at(i).pos, sizeof(int), 1, file);
+            fwrite(&R.nextissame.at(i).length, sizeof(int), 1, file);
+        }
+        tmp = G.nextissame.size();
+        fwrite(&tmp, sizeof(int), 1, file);
+        for(i = 0; i < tmp; i++)
+        {
+            fwrite(&G.nextissame.at(i).pos, sizeof(int), 1, file);
+            fwrite(&G.nextissame.at(i).length, sizeof(int), 1, file);
+        }
+        tmp = B.nextissame.size();
+        fwrite(&tmp, sizeof(int), 1, file);
+        for(i = 0; i < tmp; i++)
+        {
+            fwrite(&B.nextissame.at(i).pos, sizeof(int), 1, file);
+            fwrite(&B.nextissame.at(i).length, sizeof(int), 1, file);
+        }
+ 
+ 
+    }
+ 
+ 
+    unsigned char* getrawpixels()
+    {
+        unsigned char* buffer;
+        //if(!iscompressed)
+        //{
+            CI_size = width*height*channels;
+            buffer = (unsigned char*)malloc(CI_size*sizeof(unsigned char));
+            //printf("mall:%d\n",CI_size*sizeof(unsigned char));
+            //int sz = CI_size;
+            int i = 0;
+            int swi = 0;
+            //printf("malloc:%d __%d,%d,%d\n",CI_size,R.width*R.height,G.width*G.height,B.width*B.height);
+            for(i = 0; i < CI_size; i=i+3)
+            {
+ 
+                *(buffer+i)=R.bytes[swi];
+                *(buffer+i+1)=G.bytes[swi];
+                *(buffer+i+2)=B.bytes[swi];
+                swi++;
+                //printf("\r RGB:%d,%d,%d     \n",*(buffer+i),*(buffer+i+1),*(buffer+i+2));
+                //printf("\r i:%d",i);
+            }
+        //}
+        /*else
+        {
+            CI_size_compressed = (R.cpcsz+G.cpcsz+B.cpcsz)*channels;
+            buffer = (unsigned char*)malloc(CI_size_compressed);
+            //printf("mall:%d\n",_msize(buffer));
+            //int sz = CI_size;
+            int i = 0;
+            int swi = 0;
+            for(i = 0; i < CI_size_compressed; i=i+3)
+            {
+ 
+                *(buffer+i)=R.bytes[swi];
+                *(buffer+i+1)=G.bytes[swi];
+                *(buffer+i+2)=B.bytes[swi];
+                swi++;
+
+            }
+        }*/
+ 
+        return buffer;
+    }
+ 
+};
+ 
+}
